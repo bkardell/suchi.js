@@ -44,6 +44,11 @@
 
   var ua = (global.navigator) ? global.navigator.userAgent : "";
 
+  /* Oh if only we could really tell... this should be right on the most browsers... */
+  var lang = navigator.language;
+  lang = global.navigator.language || global.navigator.userLanguage || global.navigator.browserLanguage || "";
+  lang = lang.toLowerCase(); 
+
   //
   // Maps of upgrade options, (lagging browser) -> (appropriate evergreen set)
   //
@@ -108,8 +113,7 @@
     treatGCFAsLagging: false,
     onlagging: [],
     onload: [],
-    prompt: false,
-    promptLocales: [], // FIXME: default locale?
+    prompt: undefined,
     promptAt: "",
     allowCookies: true,
     pageviewsTillPrompt: 3,
@@ -141,11 +145,8 @@
                 value,
                 value_t) {
 
-        if (default_t == "undefined") {
-          return;
-        }
-
-        if ((default_t == "boolean" && value_t == "boolean") ||
+        if (default_t == "undefined" ||
+            (default_t == "boolean" && value_t == "boolean") ||
             (default_t == "string"  && value_t == "string")) {
           options[name] = value;
           return;
@@ -169,13 +170,47 @@
     return options;
   };
 
+  var lookupMessage = function(options){
+    // do we have messages?
+    var message, locales = options.prompt.defaultLocales;
+    locales.splice(0, 0, lang, lang.split("-")[0]);
+    for(var i=0; i<locales.length; i++){
+      message = options.prompt.messages[locales[i]];
+      if(message){ break };
+    }
+    
+    return message;
+  }
+
+  var setPrompt = function(options){
+    if(options.prompt.id){
+      (function(){
+        var el = document.getElementById(options.prompt.id);
+        if(el){
+            el.innerHTML = lookupMessage(options);
+        }
+      }());
+    }
+  }
+
   suchi._parseOptions = function(options) {
     options = suchi._mergeOptions(options, defaultOptionList);
 
     if (ua && suchi.isOld(ua)) {
 
       forEach(options.onlagging, function(cb) {
-        try { cb(); } catch(e) { /* squelch */ }
+        try { 
+          // We need to 
+
+          if(typeof options.prompt === "string"){
+            // load a uri?
+          }else{
+            setPrompt(options);
+            cb( lookupMessage(options) );
+          } 
+        } catch(e) { 
+          /* squelch */ 
+        }
       });
 
     }
